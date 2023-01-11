@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import {filterImageFromURL, deleteLocalFiles} from './util/util';
+import { filterImageFromURL, deleteLocalFiles } from './util/util';
 
 (async () => {
 
@@ -9,7 +9,7 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   // Set the network port
   const port = process.env.PORT || 8082;
-  
+
   // Use the body parser middleware for post requests
   app.use(bodyParser.json());
 
@@ -29,18 +29,46 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   /**************************************************************************** */
 
+  // GET /filteredimage?image_url={{URL}}
+  app.get("/filteredimage/", async (req: Request, res: Response) => {
+    let { image_url } = req.query;
+
+    //validate the image_url query
+    if (!image_url) {
+      return res.status(400)
+        .send(`image_url is required`);
+    }
+
+    //filter the image
+    const filteredpath = await filterImageFromURL(image_url);
+
+    //send the resulting file in the response
+    res.sendFile(filteredpath, err => {
+      if (err) {
+        console.log(err);
+        res.status(500).send(`Error while filtering image`);
+      }
+
+      console.log("filteredpath", filteredpath);
+
+      //deletes any files on the server on finish of the response
+      let file_to_delete = [filteredpath];
+      deleteLocalFiles(file_to_delete);
+    });
+  });
+
   //! END @TODO1
-  
+
   // Root Endpoint
   // Displays a simple message to the user
-  app.get( "/", async ( req, res ) => {
+  app.get("/", async (req, res) => {
     res.send("try GET /filteredimage?image_url={{}}")
-  } );
-  
+  });
+
 
   // Start the Server
-  app.listen( port, () => {
-      console.log( `server running http://localhost:${ port }` );
-      console.log( `press CTRL+C to stop server` );
-  } );
+  app.listen(port, () => {
+    console.log(`server running http://localhost:${port}`);
+    console.log(`press CTRL+C to stop server`);
+  });
 })();
